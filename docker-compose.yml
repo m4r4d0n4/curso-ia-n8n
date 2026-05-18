@@ -52,8 +52,8 @@ services:
     container_name: n8n_qdrant
     restart: unless-stopped
     ports:
-      - "${QDRANT_PORT:-6333}:6333"   # REST API
-      - "${QDRANT_GRPC_PORT:-6334}:6334" # gRPC
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"      # solo loopback — accede via SSH tunnel
+      - "127.0.0.1:${QDRANT_GRPC_PORT:-6334}:6334"
     environment:
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
     volumes:
@@ -70,14 +70,15 @@ services:
     image: n8nio/n8n:latest
     container_name: n8n
     restart: unless-stopped
-    ports:
-      - "${N8N_PORT:-5678}:5678"
+    # Puerto 5678 solo interno — nginx maneja el acceso externo
+    expose:
+      - "5678"
     environment:
       # Base
-      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_HOST: solvex.site
       N8N_PORT: 5678
-      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
-      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:5678/}
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://solvex.site/
 
       # Base de datos
       DB_TYPE: postgresdb
@@ -117,3 +118,24 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: n8n_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${SSL_CERT_FILE_HOST}:/etc/nginx/certs/fullchain.pem:ro
+      - ${SSL_KEY_FILE_HOST}:/etc/nginx/certs/privkey.pem:ro
+    networks:
+      - n8n_network
+    depends_on:
+      - n8n
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
