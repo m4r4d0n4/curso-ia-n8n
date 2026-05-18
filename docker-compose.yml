@@ -84,23 +84,3 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
-
-  nginx:
-    image: nginx:alpine
-    container_name: n8n_nginx
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ${SSL_CERT_FILE_HOST}:/etc/nginx/certs/fullchain.pem:ro
-      - ${SSL_KEY_FILE_HOST}:/etc/nginx/certs/privkey.pem:ro
-    networks:
-      - n8n_network
-    depends_on:
-      - n8n
-    healthcheck:
-      test: ["CMD", "nginx", "-t"]
-      interval: 30s
-      timeout: 5s
-      retries: 3

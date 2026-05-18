@@ -2,27 +2,41 @@
 
 Stack de automatización con IA para construir pipelines RAG (Retrieval-Augmented Generation) usando n8n como orquestador y Qdrant como base de datos vectorial, desplegado en `solvex.site` con SSL.
 
-## Arquitectura
+## Modos de arranque
 
+| Modo | Comando | URL |
+|------|---------|-----|
+| Con SSL (producción) | `make ssl` | `https://solvex.site:5678` |
+| Sin SSL (desarrollo) | `make nossl` | `http://<ip>:5678` |
+
+### Arquitectura SSL
 ```
 Internet
    │
    ▼
-nginx (80/443) ──SSL──► n8n (5678, interno)
-                              │
-                    ┌─────────┴─────────┐
-               PostgreSQL           Qdrant
-              (persistencia)    (vector DB)
+nginx :5678 ──SSL──► n8n (interno)
+                          │
+                ┌─────────┴─────────┐
+           PostgreSQL           Qdrant
 ```
 
-nginx termina el SSL con los certificados de Let's Encrypt del host y proxea a n8n. Qdrant solo es accesible desde `localhost` del servidor (no expuesto públicamente).
+### Arquitectura sin SSL
+```
+Internet
+   │
+   ▼
+n8n :5678 (directo)
+      │
+┌─────┴─────┐
+PostgreSQL  Qdrant
+```
 
 ## Servicios
 
 | Servicio | Imagen | Puerto externo | Descripción |
 |----------|--------|----------------|-------------|
-| nginx | `nginx:alpine` | 80, 443 | Reverse proxy + SSL termination |
-| n8n | `n8nio/n8n:latest` | — (interno) | Orquestador de flujos |
+| nginx | `nginx:alpine` | 5678 (solo modo SSL) | Reverse proxy + SSL termination |
+| n8n | `n8nio/n8n:latest` | 5678 (solo modo nossl) | Orquestador de flujos |
 | Qdrant | `qdrant/qdrant:latest` | 127.0.0.1:6333/6334 | Base de datos vectorial |
 | PostgreSQL | `postgres:16-alpine` | — (interno) | Persistencia de n8n |
 
@@ -47,13 +61,16 @@ cp .env.example .env
 openssl rand -hex 32
 
 # 4. Preparar directorios y permisos (necesario la primera vez)
-sudo bash setup.sh
+sudo make setup
 
-# 5. Levantar los servicios
-docker compose up -d
+# 5a. Levantar CON SSL (producción)
+make ssl
 
-# 5. Ver logs en tiempo real (opcional)
-docker compose logs -f
+# 5b. Levantar SIN SSL (desarrollo/local)
+make nossl
+
+# Ver logs en tiempo real (opcional)
+make logs
 ```
 
 ## URLs de acceso
@@ -83,35 +100,34 @@ docker compose exec nginx nginx -s reload
 
 ```
 .
-├── docker-compose.yml   # Definición de servicios
+├── docker-compose.yml        # Base: postgres + qdrant + n8n (sin puerto externo)
+├── docker-compose.ssl.yml    # Override: añade nginx con SSL
+├── docker-compose.nossl.yml  # Override: expone n8n:5678 directamente
+├── Makefile                  # Atajos: make ssl / make nossl / make down …
 ├── nginx/
-│   └── nginx.conf       # Configuración del reverse proxy SSL
-├── .env.example         # Plantilla de variables de entorno
-├── .env                 # Variables reales — NO se sube al repo
+│   └── nginx.conf            # Configuración del reverse proxy SSL
+├── setup.sh                  # Crea carpetas y permisos (primera vez)
+├── .env.example              # Plantilla de variables de entorno
+├── .env                      # Variables reales — NO se sube al repo
 ├── .gitignore
-├── n8n_data/            # Datos persistidos de n8n
-├── postgres_data/       # Datos persistidos de PostgreSQL
-├── qdrant_data/         # Datos persistidos de Qdrant
-└── shared/              # Archivos compartidos entre flujos de n8n
+├── n8n_data/                 # Datos persistidos de n8n
+├── postgres_data/            # Datos persistidos de PostgreSQL
+├── qdrant_data/              # Datos persistidos de Qdrant
+└── shared/                   # Archivos compartidos entre flujos de n8n
 ```
 
 ## Comandos útiles
 
 ```bash
-# Ver estado de los contenedores
-docker compose ps
+make ssl        # Arrancar con SSL
+make nossl      # Arrancar sin SSL
+make down       # Parar todos los servicios
+make logs       # Ver logs en tiempo real
+make ps         # Estado de los contenedores
+make setup      # Crear carpetas y permisos (primera vez)
 
-# Recargar nginx sin downtime (ej. tras renovar certs)
-docker compose exec nginx nginx -s reload
-
-# Reiniciar un servicio específico
-docker compose restart n8n
-
-# Detener los servicios
-docker compose down
-
-# Detener y eliminar volúmenes (borra todos los datos)
-docker compose down -v
+# Recargar nginx sin downtime (tras renovar certs SSL)
+docker compose -f docker-compose.yml -f docker-compose.ssl.yml exec nginx nginx -s reload
 ```
 
 ## Variables de entorno
