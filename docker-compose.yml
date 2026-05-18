@@ -51,6 +51,7 @@ services:
       N8N_PORT: 5678
       N8N_PROTOCOL: ${N8N_PROTOCOL}
       WEBHOOK_URL: ${WEBHOOK_URL}
+      N8N_EDITOR_BASE_URL: ${WEBHOOK_URL}
 
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
