@@ -75,10 +75,10 @@ services:
       - "5678"
     environment:
       # Base
-      N8N_HOST: solvex.site
+      N8N_HOST: ${N8N_HOST}
       N8N_PORT: 5678
-      N8N_PROTOCOL: https
-      WEBHOOK_URL: https://solvex.site:5678/
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      WEBHOOK_URL: ${WEBHOOK_URL}
 
       # Base de datos
       DB_TYPE: postgresdb
