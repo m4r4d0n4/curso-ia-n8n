@@ -8,7 +8,7 @@ ssl:
 	$(COMPOSE_SSL) up -d
 
 nossl:
-	N8N_HOST=localhost N8N_PROTOCOL=http WEBHOOK_URL=http://localhost:5678/ \
+	N8N_HOST=localhost:5678 N8N_PROTOCOL=http WEBHOOK_URL=http://localhost:5678/ \
 	$(COMPOSE_NOSSL) up -d
 
 down:
