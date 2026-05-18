@@ -46,7 +46,10 @@ cp .env.example .env
 #    Genera la encryption key con:
 openssl rand -hex 32
 
-# 4. Levantar los servicios
+# 4. Preparar directorios y permisos (necesario la primera vez)
+sudo bash setup.sh
+
+# 5. Levantar los servicios
 docker compose up -d
 
 # 5. Ver logs en tiempo real (opcional)
